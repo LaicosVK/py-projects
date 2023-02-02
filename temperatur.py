@@ -1,20 +1,31 @@
 import Adafruit_DHT
 import time
+from dotenv import load_dotenv
+import os
+import ast
 import RPi.GPIO as GPIO
 GPIO.cleanup()
-        
-# Set the type of sensor
+
+# Variables
+load_dotenv()
+time_check = int(os.getenv('time_check'))
+sensors = ast.literal_eval(os.getenv('sensors'))
+led_green = int(os.getenv('led_green'))
+led_red = int(os.getenv('led_red'))
+status_number = int(os.getenv('status_number'))
+blink_times = int(os.getenv('blink_times'))
+status_min = int(os.getenv('status_min'))
+status_max = int(os.getenv('status_max'))
+show_debug_print = os.getenv('show_debug_print')
+if show_debug_print == "False":
+    show_debug_print = False
+else:
+    show_debug_print = True
+
 sensor = Adafruit_DHT.DHT11
-        
-# Set the GPIO pins for each sensor
-sensors = [{'name': 'eins', 'pin': 6, 'temp_min': 20.0, 'temp_max': 25, 'hum_min': 60.0, 'hum_max': 80.0}, {'name': 'zwei', 'pin': 13, 'temp_min': 20.0, 'temp_max': 25, 'hum_min': 60.0, 'hum_max': 80.0}, {'name': 'drei', 'pin': 19, 'temp_min': 20.0, 'temp_max': 25, 'hum_min': 60.0, 'hum_max': 80.0}, {'name': 'vier', 'pin': 16, 'temp_min': 20.0, 'temp_max': 25, 'hum_min': 60.0, 'hum_max': 80.0}, {'name': 'fünf', 'pin': 5, 'temp_min': 20.0, 'temp_max': 25, 'hum_min': 60.0, 'hum_max': 80.0}]
-led_green = 23
-led_red = 24
-status_number = -5
-blink_times = 5
-show_debug_print = False
 
 def main():
+    global time_check
     global status_number
     try:
         # GPIO
@@ -36,6 +47,12 @@ def main():
                 print(str(text))
             except:
                 pass
+            
+        def log(text):
+            printt(text)
+            f = open("log.txt", "a+")
+            f.write(f"\n{time.ctime(time.time())} \t {text}")
+            f.close()
         
         def on(pin):
             debug_print(f"Turn on {pin}")
@@ -48,12 +65,14 @@ def main():
         def status():
             global status_number
             global blink_times
+            global status_min
+            global status_max
             debug_print(f"Status: {status_number}")
             
-            if status_number < -10:
-                status_number = -10
-            if status_number > 10:
-                status_number = 10
+            if status_number < status_min:
+                status_number = status_min
+            if status_number > status_max:
+                status_number = status_max
                 
             if status_number > 0:
                 on(led_green)
@@ -75,17 +94,17 @@ def main():
                 humidity, temperature = Adafruit_DHT.read_retry(sensor, part["pin"])
         
                 if humidity is not None and temperature is not None:
-                    printt("{}: Temperatur: {:.0f}°C, Feuchtigkeit: {:.0f}%".format(part["name"], temperature, humidity))
                     if part["temp_min"] < temperature < part["temp_max"] and part["hum_min"] < humidity < part["hum_max"]:
+                        printt("{} Success: Temperatur: {:.0f}°C, Feuchtigkeit: {:.0f}%".format(part["name"], temperature, humidity))
                         status_number += 1
                     else:
-                        printt("{}: Failed to pass test! Temperatur: {:.0f}°C, Feuchtigkeit: {:.0f}%".format(part["name"], temperature, humidity))
+                        log("{} Failed: Temperatur: {:.0f}°C ({}-{}), Feuchtigkeit: {:.0f}% ({}-{})".format(part['name'], temperature, part['temp_min'], part['temp_max'], humidity, part['hum_min'], part['hum_max']))
                         status_number -= 7
                 else:
-                    printt("Failed to get reading from sensor on pin {}".format(part["pin"]))
+                    log("Failed to get reading from sensor on pin {}".format(part["pin"]))
                     status_number -= 6
             status()
-            time.sleep(10)
+            time.sleep(time_check)
 
     except KeyboardInterrupt:
         printt('Gute nacht!')
@@ -96,7 +115,4 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('Interrupted')
-        try:
-            sys.exit(130)
-        except SystemExit:
-            os._exit(130)
+        
