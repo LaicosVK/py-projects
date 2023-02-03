@@ -94,7 +94,7 @@ def main():
                 humidity, temperature = Adafruit_DHT.read_retry(sensor, part["pin"])
         
                 if humidity is not None and temperature is not None:
-                    if part["temp_min"] < temperature < part["temp_max"] and part["hum_min"] < humidity < part["hum_max"]:
+                    if part["temp_min"] <= temperature <= part["temp_max"] and part["hum_min"] <= humidity <= part["hum_max"]:
                         printt("{} Success: Temperatur: {:.0f}°C, Feuchtigkeit: {:.0f}%".format(part["name"], temperature, humidity))
                         status_number += 1
                     else:
