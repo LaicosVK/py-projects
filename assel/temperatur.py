@@ -11,6 +11,7 @@ load_dotenv()
 time_check = int(os.getenv('time_check'))
 sensors = ast.literal_eval(os.getenv('sensors'))
 led_green = int(os.getenv('led_green'))
+led_yellow = int(os.getenv('led_yellow'))
 led_red = int(os.getenv('led_red'))
 status_number = int(os.getenv('status_number'))
 blink_times = int(os.getenv('blink_times'))
@@ -32,6 +33,7 @@ def main():
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(led_green, GPIO.OUT)
+        GPIO.setup(led_yellow, GPIO.OUT)
         GPIO.setup(led_red, GPIO.OUT)
         
         def debug_print(text):
@@ -88,8 +90,10 @@ def main():
         
         
         on(led_green)
+        on(led_yellow)
         on(led_red)
         while True:
+            on(led_yellow)
             for part in sensors:
                 humidity, temperature = Adafruit_DHT.read_retry(sensor, part["pin"])
         
@@ -99,10 +103,11 @@ def main():
                         status_number += 1
                     else:
                         log("{} Failed: Temperatur: {:.0f}°C ({}-{}), Feuchtigkeit: {:.0f}% ({}-{})".format(part['name'], temperature, part['temp_min'], part['temp_max'], humidity, part['hum_min'], part['hum_max']))
-                        status_number -= 7
+                        status_number -= len(sensors)+2
                 else:
-                    log("Failed to get reading from sensor on pin {}".format(part["pin"]))
-                    status_number -= 6
+                    log("{} Failed: Keine Daten auf Pin {}".format(part["name"], part["pin"]))
+                    status_number -= len(sensors)+1
+            off(led_yellow)
             status()
             time.sleep(time_check)
 
